@@ -4,14 +4,17 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const http = require('http');
 const morgan = require('morgan');
-const { init, getIO } = require('./socket'); // socket.io init + getter
+const { init, getIO } = require('./socket');  // <-- socket.io init + getter
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT || 5000;
+// Initialize MongoDB connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Middleware
 app.use(cors());
@@ -19,7 +22,7 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
 
-// Safe route loader
+// Safe route loader to prevent app crash if route file missing or errors
 function safeRequire(path) {
   try {
     return require(path);
@@ -61,36 +64,29 @@ app.use('/api/jobs', safeRequire('./routes/jobRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/transactions', safeRequire('./routes/transactionRoutes'));
 app.use('/api/groupbuys', safeRequire('./routes/groupBuyRoutes'));
-app.use('/api', safeRequire('./routes/marketRoutes'));
+app.use('/api', safeRequire('./routes/marketRoutes')); // ✅ Market Day route
 app.use('/api', safeRequire('./routes/topSellersRoutes'));
 
-// Global error handler
+
+// Initialize socket.io with HTTP server instance
+init(server);
+
+// Attach socket.io instance to app so controllers can use io to emit
+app.set('io', getIO());
+
+// Global error handler for multer and general errors
 app.use((err, req, res, next) => {
-  if (err.name === 'MulterError') return res.status(400).json({ error: err.message });
-  if (err) return res.status(500).json({ error: err.message });
+  if (err.name === 'MulterError') {
+    return res.status(400).json({ error: err.message });
+  }
+  if (err) {
+    return res.status(500).json({ error: err.message });
+  }
   next();
 });
 
-// Initialize socket.io
-init(server);
-app.set('io', getIO());
-
-// Start server with async MongoDB connection
-async function startServer() {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log('MongoDB connected');
-
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error('MongoDB connection error:', err);
-    process.exit(1); // Exit if DB fails
-  }
-}
-
-startServer();
+// Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
