@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const http = require('http');
 const morgan = require('morgan');
-const { init, getIO } = require('./socket'); // <-- socket.io init + getter
+const { init, getIO } = require('./socket'); // socket.io init + getter
 
 dotenv.config();
 
@@ -41,31 +41,38 @@ function safeRequire(path) {
   }
 }
 
-// Routes registration
-app.use('/api/admin', safeRequire('./routes/adminRoutes'));
-app.use('/api/auth', safeRequire('./routes/authRoutes'));
-app.use('/api/payment', safeRequire('./routes/paymentRoutes'));
-app.use('/api/reviews', safeRequire('./routes/reviewRoutes'));
-app.use('/api/products', safeRequire('./routes/productRoutes'));
-app.use('/api/wishlist', safeRequire('./routes/wishlistRoutes'));
-app.use('/api/promo', safeRequire('./routes/promoRoutes'));
-app.use('/api/public', safeRequire('./routes/publicRoutes'));
-app.use('/api/bargain', safeRequire('./routes/bargainRoutes'));
-app.use('/api/seller-commissions', safeRequire('./routes/sellerCommissionRoutes'));
-app.use('/api/seller/store', safeRequire('./routes/storeRoutes'));
-app.use('/api/feedbacks', safeRequire('./routes/feedbackRoutes'));
-app.use('/api/orders', safeRequire('./routes/orderRoutes'));
-app.use('/api/tracking', safeRequire('./routes/trackingRoutes'));
-app.use('/api/cart', safeRequire('./routes/cartRoutes'));
-app.use('/api/complaints', safeRequire('./routes/complaintRoutes'));
-app.use('/api/admin/properties', safeRequire('./routes/propertyRoutes'));
-app.use('/api/properties', safeRequire('./routes/propertyRoutes'));
-app.use('/api/jobs', safeRequire('./routes/jobRoutes'));
-app.use('/api/messages', safeRequire('./routes/messageRoutes'));
-app.use('/api/transactions', safeRequire('./routes/transactionRoutes'));
-app.use('/api/groupbuys', safeRequire('./routes/groupBuyRoutes'));
-app.use('/api', safeRequire('./routes/marketRoutes'));
-app.use('/api', safeRequire('./routes/topSellersRoutes'));
+// --- Routes ---
+const routes = [
+  ['admin', './routes/adminRoutes'],
+  ['auth', './routes/authRoutes'],
+  ['payment', './routes/paymentRoutes'],
+  ['reviews', './routes/reviewRoutes'],
+  ['products', './routes/productRoutes'],
+  ['wishlist', './routes/wishlistRoutes'],
+  ['promo', './routes/promoRoutes'],
+  ['public', './routes/publicRoutes'],
+  ['bargain', './routes/bargainRoutes'],
+  ['seller-commissions', './routes/sellerCommissionRoutes'],
+  ['seller/store', './routes/storeRoutes'],
+  ['feedbacks', './routes/feedbackRoutes'],
+  ['orders', './routes/orderRoutes'],
+  ['tracking', './routes/trackingRoutes'],
+  ['cart', './routes/cartRoutes'],
+  ['complaints', './routes/complaintRoutes'],
+  ['admin/properties', './routes/propertyRoutes'],
+  ['properties', './routes/propertyRoutes'],
+  ['jobs', './routes/jobRoutes'],
+  ['messages', './routes/messageRoutes'],
+  ['transactions', './routes/transactionRoutes'],
+  ['groupbuys', './routes/groupBuyRoutes'],
+  ['', './routes/marketRoutes'],
+  ['', './routes/topSellersRoutes']
+];
+
+routes.forEach(([prefix, path]) => {
+  const routePath = prefix ? `/api/${prefix}` : '/api';
+  app.use(routePath, safeRequire(path));
+});
 
 // Initialize socket.io
 init(server);
@@ -83,7 +90,7 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// --- Wrapped startup in try/catch ---
+// --- Startup ---
 (async () => {
   try {
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is missing in .env');
@@ -97,14 +104,14 @@ app.use((err, req, res, next) => {
       console.log(`Server running on port ${PORT}`);
     });
 
-    // Catch unhandled promise rejections
+    // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason, promise) => {
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
 
   } catch (err) {
     console.error('Startup error:', err);
-    process.exit(1); // Exit so Railway knows deployment failed
+    process.exit(1);
   }
 })();
 
