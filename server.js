@@ -109,14 +109,3 @@ app.use((err, req, res, next) => {
   }
 })();
 
-// --- Optional graceful shutdown for Railway SIGTERM ---
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, closing server...');
-  server.close(() => {
-    console.log('Server closed gracefully');
-    mongoose.connection.close(false, () => {
-      console.log('MongoDB connection closed');
-      process.exit(0);
-    });
-  });
-});
