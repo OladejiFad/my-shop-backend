@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -11,17 +12,19 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Middleware
+// --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
+// Use morgan only in non-production
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+// Serve uploads folder statically
 app.use('/uploads', express.static('uploads'));
 
-// Safe route loader
+// --- Safe route loader ---
 function safeRequire(path) {
   try {
     return require(path);
@@ -66,11 +69,11 @@ app.use('/api/groupbuys', safeRequire('./routes/groupBuyRoutes'));
 app.use('/api/market', safeRequire('./routes/marketRoutes'));
 app.use('/api/top-sellers', safeRequire('./routes/topSellersRoutes'));
 
-// Initialize socket.io
+// --- Initialize Socket.io ---
 init(server);
 app.set('io', getIO());
 
-// Global error handler
+// --- Global error handler ---
 app.use((err, req, res, next) => {
   if (err.name === 'MulterError') return res.status(400).json({ error: err.message });
   if (err) {
@@ -85,15 +88,17 @@ app.use((err, req, res, next) => {
   try {
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is missing in .env');
     if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is missing in .env');
+    if (!process.env.PORT) throw new Error('PORT is missing in environment variables');
 
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected successfully');
 
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT;
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
 
+    // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason, promise) => {
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
@@ -104,7 +109,7 @@ app.use((err, req, res, next) => {
   }
 })();
 
-// Graceful shutdown for Railway SIGTERM
+// --- Optional graceful shutdown for Railway SIGTERM ---
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, closing server...');
   server.close(() => {
