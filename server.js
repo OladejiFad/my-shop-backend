@@ -72,6 +72,7 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
   if (err) {
+    console.error('Unhandled error in request:', err);
     return res.status(500).json({ error: err.message });
   }
   next();
@@ -87,9 +88,21 @@ app.use((err, req, res, next) => {
     console.log('MongoDB connected successfully');
 
     const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Catch unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+
+    // Catch uncaught exceptions
+    process.on('uncaughtException', (err) => {
+      console.error('Uncaught Exception thrown:', err);
+      process.exit(1);
+    });
+
   } catch (err) {
     console.error('Startup error:', err);
     process.exit(1); // Exit so Railway knows deployment failed
