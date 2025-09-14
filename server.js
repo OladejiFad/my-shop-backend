@@ -109,3 +109,23 @@ app.use((err, req, res, next) => {
   }
 })();
 
+// --- Graceful shutdown (Railway-friendly) ---
+function gracefulShutdown(signal) {
+  console.log(`${signal} received, shutting down gracefully...`);
+
+  server.close(async () => {
+    console.log('HTTP server closed');
+
+    try {
+      await mongoose.connection.close(false);
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    } catch (err) {
+      console.error('Error during MongoDB shutdown:', err);
+      process.exit(1);
+    }
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // Railway
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));   // Local Ctrl+C
