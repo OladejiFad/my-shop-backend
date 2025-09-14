@@ -92,7 +92,7 @@ app.use((err, req, res, next) => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected successfully');
 
-    const PORT = process.env.PORT || 5000; // dynamic port for Railway / fallback for local
+    const PORT = process.env.PORT || 5000; // fallback for local
     console.log(`Starting server in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 
     server.listen(PORT, '0.0.0.0', () => {
