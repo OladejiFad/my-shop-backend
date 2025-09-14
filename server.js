@@ -14,7 +14,12 @@ const server = http.createServer(app);
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(morgan('dev'));
+
+// Use morgan only in non-production
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+}
+
 app.use('/uploads', express.static('uploads'));
 
 // Safe route loader
@@ -56,7 +61,7 @@ app.use('/api/complaints', safeRequire('./routes/complaintRoutes'));
 app.use('/api/admin/properties', safeRequire('./routes/propertyRoutes'));
 app.use('/api/properties', safeRequire('./routes/propertyRoutes'));
 app.use('/api/jobs', safeRequire('./routes/jobRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/messages', safeRequire('./routes/messageRoutes'));
 app.use('/api/transactions', safeRequire('./routes/transactionRoutes'));
 app.use('/api/groupbuys', safeRequire('./routes/groupBuyRoutes'));
 app.use('/api', safeRequire('./routes/marketRoutes'));
@@ -97,14 +102,20 @@ app.use((err, req, res, next) => {
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
 
-    // Catch uncaught exceptions
-    process.on('uncaughtException', (err) => {
-      console.error('Uncaught Exception thrown:', err);
-      process.exit(1);
-    });
-
   } catch (err) {
     console.error('Startup error:', err);
     process.exit(1); // Exit so Railway knows deployment failed
   }
 })();
+
+// Graceful shutdown for Railway SIGTERM
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  server.close(() => {
+    console.log('Server closed gracefully');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
