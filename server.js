@@ -43,7 +43,7 @@ function safeRequire(path) {
   }
 }
 
-// --- Routes registration (explicit style) ---
+// --- Routes registration ---
 app.use('/api/admin', safeRequire('./routes/adminRoutes'));
 app.use('/api/auth', safeRequire('./routes/authRoutes'));
 app.use('/api/payment', safeRequire('./routes/paymentRoutes'));
@@ -88,12 +88,13 @@ app.use((err, req, res, next) => {
   try {
     if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is missing in .env');
     if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is missing in .env');
-    if (!process.env.PORT) throw new Error('PORT is missing in environment variables');
 
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected successfully');
 
-    const PORT = process.env.PORT;
+    const PORT = process.env.PORT || 5000; // dynamic port for Railway / fallback for local
+    console.log(`Starting server in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
@@ -113,17 +114,18 @@ app.use((err, req, res, next) => {
 function gracefulShutdown(signal) {
   console.log(`${signal} received, shutting down gracefully...`);
 
-  server.close(async () => {
+  server.close(() => {
     console.log('HTTP server closed');
 
-    try {
-      await mongoose.connection.close(false);
-      console.log('MongoDB connection closed');
-      process.exit(0);
-    } catch (err) {
-      console.error('Error during MongoDB shutdown:', err);
-      process.exit(1);
-    }
+    mongoose.connection.close(false)
+      .then(() => {
+        console.log('MongoDB connection closed');
+        process.exit(0);
+      })
+      .catch((err) => {
+        console.error('Error during MongoDB shutdown:', err);
+        process.exit(1);
+      });
   });
 }
 
