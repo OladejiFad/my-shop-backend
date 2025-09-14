@@ -80,9 +80,7 @@ app.set('io', getIO());
 
 // Global error handler
 app.use((err, req, res, next) => {
-  if (err.name === 'MulterError') {
-    return res.status(400).json({ error: err.message });
-  }
+  if (err.name === 'MulterError') return res.status(400).json({ error: err.message });
   if (err) {
     console.error('Unhandled error in request:', err);
     return res.status(500).json({ error: err.message });
@@ -100,7 +98,7 @@ app.use((err, req, res, next) => {
     console.log('MongoDB connected successfully');
 
     const PORT = process.env.PORT || 5000;
-    server.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
 
