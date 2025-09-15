@@ -36,10 +36,8 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Username already exists' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const newAdmin = new Admin({ username, phone, password: hashedPassword });
+    // 🚨 no hashing here, let schema do it
+    const newAdmin = new Admin({ username, phone, password });
     await newAdmin.save();
 
     res.status(201).json({ message: 'Admin registered successfully' });
@@ -47,6 +45,7 @@ exports.registerAdmin = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 
 // Login Admin

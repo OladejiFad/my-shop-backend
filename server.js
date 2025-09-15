@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -12,7 +11,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// --- Middleware ---
+// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -21,10 +20,9 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Serve uploads folder statically
 app.use('/uploads', express.static('uploads'));
 
-// --- Safe route loader ---
+// Safe route loader
 function safeRequire(path) {
   try {
     return require(path);
@@ -43,7 +41,7 @@ function safeRequire(path) {
   }
 }
 
-// --- Routes registration ---
+// --- Routes registration (explicit style) ---
 app.use('/api/admin', safeRequire('./routes/adminRoutes'));
 app.use('/api/auth', safeRequire('./routes/authRoutes'));
 app.use('/api/payment', safeRequire('./routes/paymentRoutes'));
@@ -66,14 +64,15 @@ app.use('/api/jobs', safeRequire('./routes/jobRoutes'));
 app.use('/api/messages', safeRequire('./routes/messageRoutes'));
 app.use('/api/transactions', safeRequire('./routes/transactionRoutes'));
 app.use('/api/groupbuys', safeRequire('./routes/groupBuyRoutes'));
-app.use('/api/market', safeRequire('./routes/marketRoutes'));
-app.use('/api/top-sellers', safeRequire('./routes/topSellersRoutes'));
+app.use('/api/market-status', require('./routes/marketRoutes'));
 
-// --- Initialize Socket.io ---
+app.use('/api', safeRequire('./routes/topSellersRoutes'));
+
+// Initialize socket.io
 init(server);
 app.set('io', getIO());
 
-// --- Global error handler ---
+// Global error handler
 app.use((err, req, res, next) => {
   if (err.name === 'MulterError') return res.status(400).json({ error: err.message });
   if (err) {
@@ -92,9 +91,7 @@ app.use((err, req, res, next) => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected successfully');
 
-    const PORT = process.env.PORT || 5000; // fallback for local
-    console.log(`Starting server in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-
+    const PORT = process.env.PORT || 5000;
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
@@ -110,24 +107,14 @@ app.use((err, req, res, next) => {
   }
 })();
 
-// --- Graceful shutdown (Railway-friendly) ---
-function gracefulShutdown(signal) {
-  console.log(`${signal} received, shutting down gracefully...`);
-
+// Graceful shutdown for Railway SIGTERM
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
   server.close(() => {
-    console.log('HTTP server closed');
-
-    mongoose.connection.close(false)
-      .then(() => {
-        console.log('MongoDB connection closed');
-        process.exit(0);
-      })
-      .catch((err) => {
-        console.error('Error during MongoDB shutdown:', err);
-        process.exit(1);
-      });
+    console.log('Server closed gracefully');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
   });
-}
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // Railway
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));   // Local Ctrl+C
+});
